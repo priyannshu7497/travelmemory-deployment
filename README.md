@@ -124,17 +124,17 @@ server {
     listen 80;
     server_name travelmemory.dpdns.org;
 
-    return 301 https://$host$request_uri;
+return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
     server_name travelmemory.dpdns.org;
 
-    ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
+ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/travelmemory.dpdns.org/privkey.pem;
 
-    location / {
+ location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -174,17 +174,17 @@ server {
     listen 443 ssl;
     server_name travelmemory.dpdns.org www.travelmemory.dpdns.org;
 
-    ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
+ ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/travelmemory.dpdns.org/privkey.pem;
 
-    root /home/ubuntu/TravelMemory/frontend/build;
+ root /home/ubuntu/TravelMemory/frontend/build;
     index index.html;
 
-    location /api/ {
+location /api/ {
         proxy_pass http://127.0.0.1:5000/;
     }
 
-    location / {
+location / {
         try_files $uri /index.html;
     }
 }
@@ -212,11 +212,11 @@ server {
     listen 80;
     server_name travelmemory.dpdns.org;
 
-    location /api {
+ location /api {
         proxy_pass http://localhost:3000;
     }
 
-    location / {
+location / {
         root /var/www/travelmemory;
         try_files $uri $uri/ /index.html;
     }
