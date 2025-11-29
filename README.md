@@ -40,8 +40,8 @@
 
 | Field | Details |
 |-------|---------|
-| **Name** | Arjun Patel |
-| **College** | VIT Chennai |
+| **Name** | Priyanshu Gupta |
+| **Platform** | Hero Vired |
 | **Purpose** | Assignment Submission |
 
 ---
@@ -71,36 +71,132 @@
 | Security & DNS | Cloudflare |
 | Scaling | AWS Load Balancer |
 
+0. Launch EC2 and basic network setup
+
+In AWS Console → EC2 → Launch Instance:
+
+AMI: Ubuntu Server 24.04 LTS
+
+Instance type: t3.micro (for testing) or bigger for production.
+
+Key pair: use your SSH key.
+
+Security Group: allow inbound:
+
+SSH (TCP 22) from your IP
+
+HTTP (TCP 80) from anywhere (0.0.0.0/0)
+
+HTTPS (TCP 443) from anywhere (0.0.0.0/0)
+
+(If using ELB later, ELB will access instance on target port, ensure security group allows ELB)
+
+Launch and note the public IPv4 address.
+
 ---
 
 ## ⚙️ Backend Setup
+SSH command
+ssh -i "C:\Users\empir\Downloads\travelmemory-key.pem" ubuntu@13.61.19.179
 
-```sh
-git clone <repo-url>
+System dependencies install
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git nginx curl
+
+Project clone
+git clone https://github.com/UnpredictablePrashant/TravelMemory
 cd TravelMemory/backend
+
 npm install
 Create .env
-
+Backend directory
 MONGO_URI=your_mongo_url
 PORT=3000
 
 
 Start backend:
 
+NGINX reverse proxy.
+
+sudo nano /etc/nginx/sites-available/default
+
+server {
+    listen 80;
+    server_name travelmemory.dpdns.org;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name travelmemory.dpdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/travelmemory.dpdns.org/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+
+
+Save & reload:
+sudo nginx -t
+sudo systemctl restart nginx
+
 sudo npm install -g pm2
 pm2 start server.js --name travel-backend
 pm2 save
 pm2 startup
 
-🎨 Frontend Setup
-cd ../frontend
-npm install
+Backend is now accessible
 
+🎨 Frontend Setup
+cd ~/TravelMemory/frontend
+npm install
+npm run build
+
+sudo nano /etc/nginx/sites-available/default
+
+server {
+    listen 80;
+    server_name travelmemory.dpdns.org www.travelmemory.dpdns.org;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name travelmemory.dpdns.org www.travelmemory.dpdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/travelmemory.dpdns.org/privkey.pem;
+
+    root /home/ubuntu/TravelMemory/frontend/build;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000/;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+}
 
 Update backend URL → src/urls.js:
 
 export const BASE_URL = "https://travelmemory.dpdns.org";
 
+
+NGINX Restart
+sudo nginx -t
+sudo systemctl restart nginx
 
 Build frontend:
 
@@ -111,8 +207,6 @@ sudo cp -r build/* /var/www/travelmemory/
 🌐 NGINX Reverse Proxy
 sudo nano /etc/nginx/sites-available/travelmemory
 
-
-Paste:
 
 server {
     listen 80;
@@ -184,5 +278,5 @@ Upload media to AWS S3
 
 Developed & Deployed By:
 
-Arjun Patel | VIT Chennai
+Priyanshu Gupta | Hero Vrired
 Guided by provided deployment objective documentation.
