@@ -262,7 +262,7 @@ Domain + SSL	✔️
 Load Balancing Configured	✔️
 Documentation (This File)	✔️
 🔗 Repository Link
-https://github.com/YOUR-USERNAME/TravelMemory
+https://github.com/UnpredictablePrashant/TravelMemory
 
 🚀 Future Improvements
 
