@@ -36,6 +36,31 @@
 
 ---
 
+# 🌍 Travel Memory App Deployment
+
+---
+
+## 📚 Table of Contents
+
+| Section |
+|--------|
+| 1. Project Overview |
+| 2. Student Information |
+| 3. Objectives |
+| 4. Tech Stack |
+| 5. Setup & Deployment |
+| 6. Scaling and Load Balancing |
+| 7. Cloudflare Configuration |
+| 8. Testing |
+| 9. Screenshots |
+| 10. Architecture Diagram |
+| 11. Final Deliverables |
+| 12. Repository Link |
+| 13. Future Improvements |
+| 14. Credits |
+
+---
+
 ## 👤 Student Information
 
 | Field | Details |
@@ -71,70 +96,60 @@
 | Security & DNS | Cloudflare |
 | Scaling | AWS Load Balancer |
 
-0. Launch EC2 and basic network setup
+---
 
-In AWS Console → EC2 → Launch Instance:
+## 🚀 Deployment Steps
 
-AMI: Ubuntu Server 24.04 LTS
+### 0️⃣ Launch AWS EC2 Instance
 
-Instance type: t3.micro (for testing) or bigger for production.
-
-Key pair: use your SSH key.
-
-Security Group: allow inbound:
-
-SSH (TCP 22) from your IP
-
-HTTP (TCP 80) from anywhere (0.0.0.0/0)
-
-HTTPS (TCP 443) from anywhere (0.0.0.0/0)
-
-(If using ELB later, ELB will access instance on target port, ensure security group allows ELB)
-
-Launch and note the public IPv4 address.
+- **AMI:** Ubuntu Server 24.04 LTS  
+- **Instance Type:** t3.micro  
+- **Security Rules Allowed:**  
+  - SSH → Port 22  
+  - HTTP → Port 80  
+  - HTTPS → Port 443  
 
 ---
 
-## ⚙️ Backend Setup
-SSH command
+### 1️⃣ SSH to Instance
+
+```bash
 ssh -i "C:\Users\empir\Downloads\travelmemory-key.pem" ubuntu@13.61.19.179
 
-System dependencies install
+2️⃣ Install Dependencies
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y git nginx curl
 
-Project clone
+3️⃣ Clone Repository
 git clone https://github.com/UnpredictablePrashant/TravelMemory
 cd TravelMemory/backend
-
 npm install
-Create .env
-Backend directory
+
+4️⃣ Configure Backend .env
 MONGO_URI=your_mongo_url
 PORT=3000
 
+5️⃣ Start Backend Using PM2
+sudo npm install -g pm2
+pm2 start server.js --name travel-backend
+pm2 save
+pm2 startup
 
-Start backend:
-
-NGINX reverse proxy.
-
-sudo nano /etc/nginx/sites-available/default
-
+6️⃣ NGINX Backend Reverse Proxy
 server {
     listen 80;
     server_name travelmemory.dpdns.org;
-
-return 301 https://$host$request_uri;
+    return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
     server_name travelmemory.dpdns.org;
 
-ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
+    ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/travelmemory.dpdns.org/privkey.pem;
 
- location / {
+    location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -143,27 +158,18 @@ ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
         proxy_cache_bypass $http_upgrade;
     }
 }
-
-
-
-Save & reload:
-sudo nginx -t
-sudo systemctl restart nginx
-
-sudo npm install -g pm2
-pm2 start server.js --name travel-backend
-pm2 save
-pm2 startup
-
-Backend is now accessible
-
-🎨 Frontend Setup
+7️⃣ Frontend Build
 cd ~/TravelMemory/frontend
 npm install
 npm run build
 
-sudo nano /etc/nginx/sites-available/default
+Update:
+export const BASE_URL = "https://travelmemory.dpdns.org";
+Copy build:
+sudo mkdir -p /var/www/travelmemory
+sudo cp -r build/* /var/www/travelmemory/
 
+8️⃣ Final NGINX Frontend Config
 server {
     listen 80;
     server_name travelmemory.dpdns.org www.travelmemory.dpdns.org;
@@ -174,109 +180,67 @@ server {
     listen 443 ssl;
     server_name travelmemory.dpdns.org www.travelmemory.dpdns.org;
 
- ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
+    ssl_certificate /etc/letsencrypt/live/travelmemory.dpdns.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/travelmemory.dpdns.org/privkey.pem;
 
- root /home/ubuntu/TravelMemory/frontend/build;
+    root /var/www/travelmemory;
     index index.html;
 
-location /api/ {
-        proxy_pass http://127.0.0.1:5000/;
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000/;
     }
 
-location / {
+    location / {
         try_files $uri /index.html;
     }
 }
 
-Update backend URL → src/urls.js:
-
-export const BASE_URL = "https://travelmemory.dpdns.org";
-
-
-NGINX Restart
+Restart:
 sudo nginx -t
 sudo systemctl restart nginx
 
-Build frontend:
-
-npm run build
-sudo mkdir -p /var/www/travelmemory
-sudo cp -r build/* /var/www/travelmemory/
-
-🌐 NGINX Reverse Proxy
-sudo nano /etc/nginx/sites-available/travelmemory
-
-
-server {
-    listen 80;
-    server_name travelmemory.dpdns.org;
-
- location /api {
-        proxy_pass http://localhost:3000;
-    }
-
-location / {
-        root /var/www/travelmemory;
-        try_files $uri $uri/ /index.html;
-    }
-}
-
-sudo ln -s /etc/nginx/sites-available/travelmemory /etc/nginx/sites-enabled/
-sudo systemctl restart nginx
-
-🔐 SSL (Certbot)
+9️⃣ SSL Certificate via Certbot
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d travelmemory.dpdns.org
 
-☁ Cloudflare DNS Setup
-Type	Name	Value	Notes
-A	@	EC2 Public IP	Required
-CNAME	www	Load Balancer URL	Scaling
-Proxy Mode	🔶 ON	Required for SSL	
-🧪 Testing Routes
-URL	Expected Result
-/	Frontend loads
-/api/hello	Hello World
-/api/trip	Data operations
-📸 Screenshots Placeholder
+☁ Cloudflare DNS Configuration
+Type	Name	Value	Status
+A	@	EC2 Public IP	🔶 Proxied
+CNAME	www	domain	🔶 Proxied
 
-📌 Add screenshots here after deployment
+🧪 Testing
+URL	Result
+/	Frontend works
+/api/hello	Backend API success
+/api/trip	CRUD works
 
-Feature	Screenshot
-AWS EC2 Console	⬇
-NGINX Config	⬇
-PM2 Running	⬇
-Cloudflare DNS	⬇
-App Live View	⬇
-🏗 Deployment Architecture
+🏗 Architecture
+
 User → Cloudflare → SSL → AWS Load Balancer → EC2 Instances → PM2 → Backend
-                                                ↓
-                                         NGINX → Frontend
-
+                                               ↓
+                                           NGINX → Frontend
 📦 Final Deliverables
 Item	Status
 Working EC2 Deployment	✔️
-React Frontend + Node Backend	✔️
+Frontend + Backend	✔️
 Domain + SSL	✔️
-Load Balancing Configured	✔️
-Documentation (This File)	✔️
+Load Balancer Ready	✔️
+Complete Documentation	✔️
+
 🔗 Repository Link
-https://github.com/UnpredictablePrashant/TravelMemory
+
+👉 https://github.com/UnpredictablePrashant/TravelMemory
 
 🚀 Future Improvements
 
-Dockerize frontend & backend
+Dockerize services
 
 Add CI/CD using GitHub Actions
 
-Implement caching using Redis
+Redis Caching
 
-Upload media to AWS S3
+File storage with AWS S3
 
-📌 Credits
+🏁 Credits
 
-Developed & Deployed By:
-
-Priyanshu Gupta | Hero Vrired
-Guided by provided deployment objective documentation.
+Developed By Priyanshu Gupta — Hero Vired
